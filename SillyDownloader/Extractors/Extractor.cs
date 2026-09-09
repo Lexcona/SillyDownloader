@@ -34,7 +34,7 @@ public abstract class Extractor
     {
         foreach (string urlRegex in URLs)
         {
-            Debug.Info($"Detecting if {url} follows {urlRegex}");
+            Debug.Info($"Detecting if {url} follows {urlRegex}", verbose:true);
             Match match = Regex.Match(url, urlRegex);
             if (match.Success)
             {

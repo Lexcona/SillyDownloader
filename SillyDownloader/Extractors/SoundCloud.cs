@@ -25,8 +25,9 @@ public class SoundCloud:Extractor
         albumRegex
     ];
 
-    private ExtractionData GetSongData(string url)
+    private ExtractionData GetSongData(string url, string? album=null)
     {
+        Debug.Info($"Getting song data: {url}");
         Response response = Requests.Get(url);
         response.response.EnsureSuccessStatusCode();
         
@@ -111,12 +112,19 @@ public class SoundCloud:Extractor
                 }
             }
         };
+
+        if (string.IsNullOrEmpty(album))
+        {
+            extractionData.defaultOutput = album;
+            metadata.album = album;
+        }
         
         return extractionData;
     }
 
-    private string[] GetAlbumData(string url)
+    private (string[], string?) GetAlbumData(string url)
     {
+        Debug.Info($"Getting album data: {url}");
         Response response = Requests.Get(url);
         response.response.EnsureSuccessStatusCode();
         
@@ -124,11 +132,15 @@ public class SoundCloud:Extractor
         
         Dictionary<string, JsonElement> hydration = GetHydrationData(responseText);
         
-        File.WriteAllText("dump.json", JsonSerializer.Serialize(hydration));
+        File.WriteAllText("dump.json", JsonSerializer.Serialize(hydration, new JsonSerializerOptions { WriteIndented = true }));
 
         List<string> permURLs = new();
         
-        JsonElement tracksData = hydration["tracks"];
+        JsonElement playlistData = hydration["playlist"];
+        JsonElement tracksData = playlistData.GetProperty("tracks");
+
+        string? playListName = playlistData.GetProperty("title").GetString();
+        
         foreach (JsonElement soundData in tracksData.EnumerateArray())
         {
             string? permalink = soundData.GetProperty("permalink_url").GetString();
@@ -138,11 +150,17 @@ public class SoundCloud:Extractor
                 permURLs.Add(permalink);
             }
         }
-        return permURLs.ToArray();
+        return (permURLs.ToArray(), playListName);
     }
 
     public Dictionary<string, string[]> GetArtistData(string url)
     {
+        List<string> foundAlbums = new();
+        List<string> foundTracks = new();
+        
+        List<string> ignoreTracks = new();
+        
+        Debug.Info($"Getting artist data: {url}");
         Dictionary<string, string[]> data = new();
         
         Response response = Requests.Get(url);
@@ -152,7 +170,51 @@ public class SoundCloud:Extractor
         
         Dictionary<string, JsonElement> hydration = GetHydrationData(responseText);
         
-        File.WriteAllText("dump.json", Extra.FormatJson(JsonSerializer.Serialize(hydration)));
+        File.WriteAllText("dump.json", JsonSerializer.Serialize(hydration, new JsonSerializerOptions { WriteIndented = true }));
+        
+        JsonElement apiClientData = hydration["apiClient"];
+        JsonElement artistData = hydration["user"];
+        JsonElement statsigClientInitializeResponseData = hydration["statsigClientInitializeResponse"];
+        
+        JsonElement userClientData = statsigClientInitializeResponseData.GetProperty("user");
+        
+        string? clientId = apiClientData.GetProperty("id").GetString();
+        string? appVersion = userClientData.GetProperty("appVersion").GetString();
+        string? urn = artistData.GetProperty("urn").GetString();
+            
+        string artistID = urn.Split(":")[3];
+        
+        Debug.Info($"Grabbing album list...");
+            
+        Response albumRequest = Requests.Get($"https://api-v2.soundcloud.com/users/{artistID}/albums", parameters: new Dictionary<string, string>()
+        {
+            {"client_id", clientId},
+            {"app_version", appVersion},
+            {"limit", "100000"},
+            {"offset", "0"},
+            {"linked_partitioning", "1"},
+            {"app_locale", "en"}
+        });
+
+        albumRequest.response.EnsureSuccessStatusCode();
+        
+        Debug.Success($"Got album list");
+
+        JsonElement albumListData = albumRequest.json();
+        JsonElement.ArrayEnumerator albumList = albumListData.GetProperty("collection").EnumerateArray();
+        
+        foreach (JsonElement albumData in albumList)
+        {
+            string? permalink = albumData.GetProperty("permalink_url").GetString();
+            if (permalink != null)
+            {
+                Debug.Info($"Found: {permalink}");
+                foundAlbums.Add(permalink);
+            }
+            
+            
+        }
+        
         return data;
     }
     
@@ -173,9 +235,10 @@ public class SoundCloud:Extractor
         }
         else if (Extra.RegexCheck(url, albumRegex))
         {
-            foreach (string song in GetAlbumData(url))
+            (string[], string?) albumData = GetAlbumData(url);
+            foreach (string song in albumData.Item1)
             {
-                ExtractionData songData = GetSongData(song);
+                ExtractionData songData = GetSongData(song, albumData.Item2);
                 if (songData == null)
                 {
                     return [];

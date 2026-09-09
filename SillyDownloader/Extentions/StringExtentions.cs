@@ -89,18 +89,4 @@ public static class StringExtentions
 
         return false;
     }
-
-    public static int Find(this string? value, string part, int start = 0, int end = int.MaxValue)
-    {
-        
-    }
-    
-    public static int FindAll(this string? value, string part)
-    {
-        List<int> found = new List<int>();
-        
-        int i = 0;
-        int j = 0;
-        
-    }
 }

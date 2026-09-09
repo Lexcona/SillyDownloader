@@ -36,21 +36,4 @@ public class Extra
         
         return userAgent;
     }
-
-    public static string FormatJson(string data, int indent=4)
-    {
-        int currentIndent = 0;
-        string text = data;
-        
-        text = text.Split(",").Join(",\n");
-        text = text.Split("\":").Join("\": ");
-        
-        text = text.Split('{').Join("{\n");
-        text = text.Split('}').Join("\n}");
-        
-        text = text.Split('[').Join("[\n");
-        text = text.Split(']').Join("\n]");
-        
-        return text;
-    }
 }
