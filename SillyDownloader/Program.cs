@@ -31,17 +31,33 @@ try
             GLOBAL.argsThing.url = result.GetValue(rawArgs.url);
             GLOBAL.argsThing.output = result.GetValue(rawArgs.output);
             GLOBAL.argsThing.verbose = result.GetValue(rawArgs.verbose);
-
-            foreach (Extractor extractor in Extractor.Extractors)
+            
+            if (GLOBAL.argsThing.url != null)
             {
-                if (GLOBAL.argsThing.url != null && extractor.Detect(GLOBAL.argsThing.url))
+                foreach (Extractor extractor in Extractor.Extractors)
                 {
-                    foundExtractor = true;
-                    extractor.ExtractAndDownload(GLOBAL.argsThing.url, GLOBAL.argsThing.output);
-                    break;
+                    if (extractor == Extractor.General)
+                    {
+                        continue;
+                    }
+                
+                    if (extractor.Detect(GLOBAL.argsThing.url))
+                    {
+                        foundExtractor = true;
+                        extractor.ExtractAndDownload(GLOBAL.argsThing.url, GLOBAL.argsThing.output);
+                        break;
+                    }
+                }
+                if (!foundExtractor)
+                {
+                    ExtractionData[] extractionData = Extractor.General.ExtractAndDownload(GLOBAL.argsThing.url, GLOBAL.argsThing.output);
+                    if (extractionData.Length > 0)
+                    {
+                        foundExtractor = true;
+                    }
                 }
             }
-
+            
             if (!foundExtractor)
             {
                 Console.ForegroundColor = ConsoleColor.Cyan;

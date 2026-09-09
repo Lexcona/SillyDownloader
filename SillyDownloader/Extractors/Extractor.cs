@@ -18,10 +18,15 @@ public abstract class Extractor
     public static List<Extractor> Extractors = new();
     public abstract string Name { get; }
     public abstract string[] URLs { get; }
-    public virtual Downloader Downloader { get; } = General.Instance;
+    public virtual Downloader Downloader { get; } = Downloaders.General.Instance;
+    public static Extractor General;
 
     protected Extractor()
     {
+        if (Name == "General")
+        {
+            General = this;
+        }
         Extractors.Add(this);
     }
     
@@ -29,6 +34,7 @@ public abstract class Extractor
     {
         foreach (string urlRegex in URLs)
         {
+            Debug.Info($"Detecting if {url} follows {urlRegex}");
             Match match = Regex.Match(url, urlRegex);
             if (match.Success)
             {

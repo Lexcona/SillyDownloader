@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Mime;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using SillyDownloader.Downloaders;
 using SillyDownloader.Helper;
@@ -11,14 +13,16 @@ namespace SillyDownloader.Extractors;
 public class SoundCloud:Extractor
 {
     public override string Name => "SoundCloud";
-    public override Downloader Downloader => General.Instance;
+    public override Downloader Downloader => Downloaders.General.Instance;
 
     private string songRegex = @"^https?://(?:www\.)?soundcloud\.com/([^/?#]+)/([^/?#]+)/?$";
+    private string albumRegex = @"^https?://(?:www\.)?soundcloud\.com/([^/?#]+)/sets/([^/?#]+)/?$";
     private string profileRegex = @"^https?://(?:www\.)?soundcloud\.com/([^/?#]+)/?$";
     
     public override string[] URLs => [
         songRegex,
         profileRegex,
+        albumRegex
     ];
 
     private ExtractionData GetSongData(string url)
@@ -28,9 +32,9 @@ public class SoundCloud:Extractor
         
         string responseText = response.text;
         
-        File.WriteAllText("test.html", responseText);
-        
         Dictionary<string, JsonElement> hydration = GetHydrationData(responseText);
+        
+        File.WriteAllText("dump.json", JsonSerializer.Serialize(hydration));
         
         JsonElement soundData = hydration["sound"];
         JsonElement profileData = hydration["user"];
@@ -88,7 +92,7 @@ public class SoundCloud:Extractor
         
         //Environment.Exit(0);
 
-        General.Metadata metadata = new General.Metadata()
+        Downloaders.General.Metadata metadata = new Downloaders.General.Metadata()
         {
             artist = authorName,
             albumArtUrl = albumArtUrl,
@@ -111,18 +115,78 @@ public class SoundCloud:Extractor
         return extractionData;
     }
 
+    private string[] GetAlbumData(string url)
+    {
+        Response response = Requests.Get(url);
+        response.response.EnsureSuccessStatusCode();
+        
+        string responseText = response.text;
+        
+        Dictionary<string, JsonElement> hydration = GetHydrationData(responseText);
+        
+        File.WriteAllText("dump.json", JsonSerializer.Serialize(hydration));
+
+        List<string> permURLs = new();
+        
+        JsonElement tracksData = hydration["tracks"];
+        foreach (JsonElement soundData in tracksData.EnumerateArray())
+        {
+            string? permalink = soundData.GetProperty("permalink_url").GetString();
+            if (permalink != null)
+            {
+                Debug.Info($"Found: {permalink}");
+                permURLs.Add(permalink);
+            }
+        }
+        return permURLs.ToArray();
+    }
+
+    public Dictionary<string, string[]> GetArtistData(string url)
+    {
+        Dictionary<string, string[]> data = new();
+        
+        Response response = Requests.Get(url);
+        response.response.EnsureSuccessStatusCode();
+        
+        string responseText = response.text;
+        
+        Dictionary<string, JsonElement> hydration = GetHydrationData(responseText);
+        
+        File.WriteAllText("dump.json", Extra.FormatJson(JsonSerializer.Serialize(hydration)));
+        return data;
+    }
+    
     public override ExtractionData[] Extract(string url)
     {
         base.Extract(url);
 
         List<ExtractionData> allData = new();
 
-        ExtractionData songData = GetSongData(url);
-        if (songData == null)
+        if (Extra.RegexCheck(url, songRegex))
         {
-            return [];
+            ExtractionData songData = GetSongData(url);
+            if (songData == null)
+            {
+                return [];
+            }
+            allData.Add(songData);
         }
-        allData.Add(songData);
+        else if (Extra.RegexCheck(url, albumRegex))
+        {
+            foreach (string song in GetAlbumData(url))
+            {
+                ExtractionData songData = GetSongData(song);
+                if (songData == null)
+                {
+                    return [];
+                }
+                allData.Add(songData);
+            }
+        }
+        else if (Extra.RegexCheck(url, profileRegex))
+        {
+            GetArtistData(url);
+        }
         
         return allData.ToArray();
     }

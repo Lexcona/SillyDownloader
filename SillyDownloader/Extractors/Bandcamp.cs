@@ -10,7 +10,7 @@ namespace SillyDownloader.Extractors;
 public class Bandcamp:Extractor
 {
     public override string Name => "Bandcamp";
-    public override Downloader Downloader => General.Instance;
+    public override Downloader Downloader => Downloaders.General.Instance;
 
     private string songRegex = @"^https?://[^.]+\.bandcamp\.com/track/[^/?#]+/?$";
     private string profileRegex = @"^https?://(?:www\.)?([a-zA-Z0-9-]+)\.bandcamp\.com/?$";
@@ -141,7 +141,7 @@ public class Bandcamp:Extractor
             albumArtUrl = $"https://f4.bcbits.com/img/a{artId}_10.jpg";
         }
 
-        General.Metadata metadata = new General.Metadata
+        Downloaders.General.Metadata metadata = new Downloaders.General.Metadata
         {
             artist = artist,
             album = album,

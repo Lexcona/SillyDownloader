@@ -10,7 +10,7 @@ namespace SillyDownloader.Extractors;
 public class TikTok:Extractor
 {
     public override string Name => "TikTok";
-    public override Downloader Downloader => General.Instance;
+    public override Downloader Downloader => Downloaders.General.Instance;
 
     private string videoRegex = @"^https?://(?:www\.)?tiktok\.com/@[^/?#]+/video/\d+/?(?:\?.*)?$";
     private string profileRegex = @"^https?://(?:www\.)?tiktok\.com/@[^/?#]+/?(?:\?.*)?$";
@@ -34,7 +34,7 @@ public class TikTok:Extractor
         
         string responseText = response.text;
         
-        File.WriteAllText("test.html", responseText);
+        //File.WriteAllText("test.html", responseText);
         
         HtmlDocument doc = new HtmlDocument();
         doc.LoadHtml(responseText);
