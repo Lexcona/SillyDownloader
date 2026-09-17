@@ -74,4 +74,28 @@ public class Requests
     {
         return Request(HttpMethod.Get, url, headers, parameters);
     }
+    
+    public static Dictionary<string, string> GetParams(string? url)
+    {
+        Dictionary<string, string> paramsDict = new();
+        
+        if (string.IsNullOrEmpty(url))
+        {
+            return paramsDict;
+        }
+
+        List<string> urlSplit = url.Split("?").ToList();
+        urlSplit.RemoveAt(0);
+        
+        string paramString = string.Join("?", urlSplit);
+        string[] paramStringSplit = paramString.Split("&");
+        foreach (string param in paramStringSplit)
+        {
+            List<string> paramSplit = param.Split("=").ToList();
+            string paramKey = paramSplit[0];
+            string paramValue = string.Join("=", paramSplit);
+            paramsDict[paramKey] = paramValue;
+        }
+        return paramsDict;
+    }
 }

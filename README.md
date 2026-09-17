@@ -6,4 +6,4 @@ A small downloading tool for songs and videos
 - TikTok
 ### Music
 - Bandcamp
-- SoundCloud
+- [[Soundcloud]]
